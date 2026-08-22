@@ -740,7 +740,7 @@ export function DesktopController() {
       <ModelVisibilityOverlay gateway={gatewayRef.current || undefined} onOpenProviders={openProviderSettings} />
       <UpdatesOverlay />
       <GatewayConnectingOverlay />
-      <BootFailureOverlay />
+      <BootFailureOverlay onOpenSettings={openSettings} />
       <CommandPalette />
 
       {settingsOpen && (

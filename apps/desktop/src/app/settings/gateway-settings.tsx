@@ -101,15 +101,26 @@ export function GatewaySettings() {
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [signingIn, setSigningIn] = useState(false)
-  const [state, setState] = useState<GatewaySettingsState>(EMPTY_STATE)
+  const [state, setState] = useState<GatewaySettingsState>(() => ({
+    ...EMPTY_STATE,
+    mode: window.hermesDesktop?.isRemoteOnly ? 'remote' : EMPTY_STATE.mode
+  }))
   const [remoteToken, setRemoteToken] = useState('')
   const [lastTest, setLastTest] = useState<null | string>(null)
+  const [remoteOnly, setRemoteOnly] = useState(Boolean(window.hermesDesktop?.isRemoteOnly))
 
   // Connection scope: null = the global/default connection (the original
   // behavior); a profile name = that profile's per-profile remote override, so
   // each profile can point at its own backend.
   const [scope, setScope] = useState<null | string>(null)
   const profiles = useStore($profiles)
+
+  useEffect(() => {
+    void window.hermesDesktop
+      ?.getVersion?.()
+      .then(version => setRemoteOnly(Boolean(version.remoteOnly)))
+      .catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     void refreshActiveProfile()
@@ -437,9 +448,10 @@ export function GatewaySettings() {
           <Globe className="size-4 text-muted-foreground" />
           {g.title}
           {state.envOverride ? <Pill tone="primary">{g.envOverride}</Pill> : null}
+          {remoteOnly ? <Pill tone="primary">{g.remoteTitle}</Pill> : null}
         </div>
         <p className="mt-2 max-w-2xl text-[length:var(--conversation-caption-font-size)] leading-(--conversation-caption-line-height) text-(--ui-text-tertiary)">
-          {g.intro}
+          {remoteOnly ? g.remoteDesc : g.intro}
         </p>
       </div>
 
@@ -478,14 +490,16 @@ export function GatewaySettings() {
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <ModeCard
-          active={state.mode === 'local'}
-          description={g.localDesc}
-          disabled={state.envOverride}
-          icon={Monitor}
-          onSelect={() => setState(current => ({ ...current, mode: 'local' }))}
-          title={g.localTitle}
-        />
+        {!remoteOnly ? (
+          <ModeCard
+            active={state.mode === 'local'}
+            description={g.localDesc}
+            disabled={state.envOverride}
+            icon={Monitor}
+            onSelect={() => setState(current => ({ ...current, mode: 'local' }))}
+            title={g.localTitle}
+          />
+        ) : null}
         <ModeCard
           active={state.mode === 'remote'}
           description={g.remoteDesc}
