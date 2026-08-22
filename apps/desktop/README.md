@@ -110,10 +110,12 @@ after the client has a reachable token-authenticated bootstrap connection, or
 by saving a remote OAuth profile in the desktop connection configuration before
 launch.
 
-Remote-only artifacts are intentionally separate from the normal installers:
-the normal build remains able to install and run a local Hermes backend, while
-the `dist:remote:*` artifacts are safe to hand to users who operate their own
-Hermes servers.
+On first launch, the remote-only client requires the user to choose a remote
+gateway and authenticate before chat is available. There is no local gateway
+option or local-agent bootstrap in this build. Remote-only artifacts are
+intentionally separate from the normal installers: the normal build remains
+able to install and run a local Hermes backend, while the `dist:remote:*`
+artifacts are safe to hand to users who operate their own Hermes servers.
 
 Installers are built and uploaded to GitHub Releases manually. macOS/Windows signing & notarization happen automatically when the relevant credentials are present in the environment (`CSC_LINK` / `CSC_KEY_PASSWORD` / `APPLE_*` for macOS, `WIN_CSC_*` for Windows).
 
