@@ -3,6 +3,8 @@ export {}
 declare global {
   interface Window {
     hermesDesktop: {
+      /** True for artifacts that never install or start a local backend. */
+      isRemoteOnly?: boolean
       // Resolve a backend connection. Omit `profile` (or pass the primary) for
       // the window's backend; pass a named profile to lazily spawn/reuse that
       // profile's backend from the pool.
@@ -112,6 +114,7 @@ export interface DesktopVersionInfo {
   electronVersion: string
   nodeVersion: string
   platform: string
+  remoteOnly?: boolean
   hermesRoot: string
 }
 

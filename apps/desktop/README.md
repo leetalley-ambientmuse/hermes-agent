@@ -81,6 +81,42 @@ npm run dist:linux   # AppImage + deb + rpm
 npm run pack         # unpacked app under release/ (no installer)
 ```
 
+### Remote-only client
+
+Hermes Desktop can also be shipped as a client-only artifact. Remote-only
+builds never run the first-launch installer and never spawn a local Hermes
+backend; they connect to an already-running Hermes gateway over HTTP and
+WebSocket.
+
+Build one with:
+
+```bash
+npm run dist:remote:mac    # or dist:remote:win / dist:remote:linux
+```
+
+For token-authenticated gateways, launch the installed app with:
+
+```bash
+HERMES_DESKTOP_REMOTE_URL=https://hermes.example.com \
+HERMES_DESKTOP_REMOTE_TOKEN=your-dashboard-session-token \
+  open -a Hermes
+```
+
+The URL must be the gateway origin (for example `https://host.example.com`,
+not `/api/ws`). The gateway must expose `/api/status`, `/api/ws`, and the
+same dashboard session-token authentication used by the standard desktop
+client. OAuth-gated gateways can be configured through the Gateway settings
+after the client has a reachable token-authenticated bootstrap connection, or
+by saving a remote OAuth profile in the desktop connection configuration before
+launch.
+
+On first launch, the remote-only client requires the user to choose a remote
+gateway and authenticate before chat is available. There is no local gateway
+option or local-agent bootstrap in this build. Remote-only artifacts are
+intentionally separate from the normal installers: the normal build remains
+able to install and run a local Hermes backend, while the `dist:remote:*`
+artifacts are safe to hand to users who operate their own Hermes servers.
+
 Installers are built and uploaded to GitHub Releases manually. macOS/Windows signing & notarization happen automatically when the relevant credentials are present in the environment (`CSC_LINK` / `CSC_KEY_PASSWORD` / `APPLE_*` for macOS, `WIN_CSC_*` for Windows).
 
 ### How it works
@@ -96,7 +132,15 @@ npm run fix
 npm run type-check
 npm run lint
 npm run test:desktop:all
+npm run test:desktop:platforms
+npm run test:desktop:remote
+npm run test:ui
 ```
+
+`test:desktop:remote` is the focused contract suite for the desktop-only
+remote-client build. `test:desktop:platforms` runs the Electron platform and
+configuration tests, including that contract suite. `test:ui` runs the
+renderer tests in jsdom.
 
 ### Troubleshooting
 

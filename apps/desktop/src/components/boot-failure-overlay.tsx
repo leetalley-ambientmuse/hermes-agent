@@ -27,7 +27,7 @@ type BusyAction = 'local' | 'repair' | 'retry' | 'signin' | null
 // exited during startup, bootstrap latched, …). Without this the app shell
 // renders dead — "gateway offline", no composer, only a toast — with no way
 // to retry, repair the install, switch the gateway, or find the logs.
-export function BootFailureOverlay() {
+export function BootFailureOverlay({ onOpenSettings }: { onOpenSettings?: () => void }) {
   const boot = useStore($desktopBoot)
   const onboarding = useStore($desktopOnboarding)
   const { t } = useI18n()
@@ -35,6 +35,8 @@ export function BootFailureOverlay() {
   const [logs, setLogs] = useState<string[]>([])
   const [showLogs, setShowLogs] = useState(false)
   const [remoteReauth, setRemoteReauth] = useState<RemoteReauth | null>(null)
+  const [remoteOnly, setRemoteOnly] = useState(Boolean(window.hermesDesktop?.isRemoteOnly))
+  const [settingsOpened, setSettingsOpened] = useState(false)
 
   const visible = Boolean(boot.error) && !boot.running
   // While first-run onboarding owns the picker/flow we let it surface its own
@@ -43,7 +45,15 @@ export function BootFailureOverlay() {
   const suppressed = onboarding.flow.status !== 'idle' && onboarding.flow.status !== 'error'
 
   useEffect(() => {
+    void window.hermesDesktop
+      ?.getVersion?.()
+      .then(version => setRemoteOnly(Boolean(version.remoteOnly)))
+      .catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
     if (!visible) {
+      setSettingsOpened(false)
       return
     }
 
@@ -106,8 +116,13 @@ export function BootFailureOverlay() {
     }
   }, [visible])
 
-  if (!visible || suppressed) {
+  if (!visible || suppressed || settingsOpened) {
     return null
+  }
+
+  const openGatewaySettings = () => {
+    setSettingsOpened(true)
+    onOpenSettings?.()
   }
 
   const retry = async () => {
@@ -194,7 +209,12 @@ export function BootFailureOverlay() {
 
           <div className="grid gap-2">
             <div className="flex flex-wrap gap-2">
-              {remoteReauth ? (
+              {remoteOnly ? (
+                <Button disabled={Boolean(busy)} onClick={openGatewaySettings}>
+                  <LogIn />
+                  {copy.signInToRemoteGateway}
+                </Button>
+              ) : remoteReauth ? (
                 <Button disabled={Boolean(busy)} onClick={() => void signInRemote()}>
                   {busy === 'signin' ? <Loader2 className="animate-spin" /> : <LogIn />}
                   {label}
@@ -205,23 +225,25 @@ export function BootFailureOverlay() {
                   {copy.retry}
                 </Button>
               )}
-              {!remoteReauth ? (
+              {!remoteOnly && !remoteReauth ? (
                 <Button disabled={Boolean(busy)} onClick={() => void repair()} variant="secondary">
                   {busy === 'repair' ? <Loader2 className="animate-spin" /> : <Wrench />}
                   {copy.repairInstall}
                 </Button>
               ) : null}
-              <Button disabled={Boolean(busy)} onClick={() => void switchToLocalGateway()} variant="secondary">
-                {busy === 'local' ? <Loader2 className="animate-spin" /> : null}
-                {copy.useLocalGateway}
-              </Button>
+              {!remoteOnly ? (
+                <Button disabled={Boolean(busy)} onClick={() => void switchToLocalGateway()} variant="secondary">
+                  {busy === 'local' ? <Loader2 className="animate-spin" /> : null}
+                  {copy.useLocalGateway}
+                </Button>
+              ) : null}
               <Button onClick={openLogs} variant="ghost">
                 <FileText />
                 {copy.openLogs}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              {remoteReauth ? copy.remoteSignInHint : copy.repairHint}
+              {remoteOnly || remoteReauth ? copy.remoteSignInHint : copy.repairHint}
             </p>
           </div>
 
