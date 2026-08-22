@@ -30,8 +30,7 @@
 const fs = require("fs")
 const path = require("path")
 const { execSync } = require("child_process")
-
-const STAMP_SCHEMA_VERSION = 1
+const { createInstallStampPayload } = require("./build-stamp.cjs")
 
 const DESKTOP_ROOT = path.resolve(__dirname, "..")
 const REPO_ROOT = path.resolve(DESKTOP_ROOT, "..", "..")
@@ -103,18 +102,12 @@ function main() {
     )
   }
 
-  const payload = {
-    schemaVersion: STAMP_SCHEMA_VERSION,
-    commit: stamp.commit,
-    branch: stamp.branch,
-    builtAt: new Date().toISOString(),
-    dirty: stamp.dirty,
-    source: stamp.source,
-    // Remote-only artifacts never bootstrap or spawn a local Hermes backend.
-    // Persist the mode in the packaged stamp so it survives Finder/Explorer
-    // launches after the build environment is gone.
+  // Remote-only artifacts never bootstrap or spawn a local Hermes backend.
+  // Persist the mode in the packaged stamp so it survives Finder/Explorer
+  // launches after the build environment is gone.
+  const payload = createInstallStampPayload(stamp, {
     remoteOnly: process.env.HERMES_DESKTOP_REMOTE_ONLY === "1"
-  }
+  })
 
   fs.mkdirSync(OUT_DIR, { recursive: true })
   fs.writeFileSync(OUT_FILE, JSON.stringify(payload, null, 2) + "\n", "utf8")

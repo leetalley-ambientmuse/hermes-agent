@@ -6,6 +6,17 @@ import path from 'path'
 export default defineConfig({
   base: './',
   plugins: [react(), tailwindcss()],
+  test: {
+    // Keep the renderer suite focused on source tests. Electron/node tests
+    // have their own `node --test` runner, and packaged build outputs contain
+    // copied dependency test files that must never be discovered by Vitest.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['node_modules', 'dist', 'build', 'release', 'electron', 'scripts'],
+    // A few renderer tests intentionally stub the global `window` object. Run
+    // files serially so those scoped stubs cannot race tests that use jsdom's
+    // real localStorage/window implementation.
+    fileParallelism: false
+  },
   css: {
     // Pin an explicit (empty) PostCSS config. Tailwind is handled entirely by
     // `@tailwindcss/vite`, so the renderer needs no PostCSS plugins — and

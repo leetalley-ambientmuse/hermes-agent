@@ -132,7 +132,15 @@ npm run fix
 npm run type-check
 npm run lint
 npm run test:desktop:all
+npm run test:desktop:platforms
+npm run test:desktop:remote
+npm run test:ui
 ```
+
+`test:desktop:remote` is the focused contract suite for the desktop-only
+remote-client build. `test:desktop:platforms` runs the Electron platform and
+configuration tests, including that contract suite. `test:ui` runs the
+renderer tests in jsdom.
 
 ### Troubleshooting
 

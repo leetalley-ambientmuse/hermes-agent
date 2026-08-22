@@ -28,6 +28,13 @@ const { detectRemoteDisplay, isWindowsBinaryPathInWsl, isWslEnvironment } = requ
 const { runBootstrap } = require('./bootstrap-runner.cjs')
 const { canImportHermesCli, verifyHermesCli } = require('./backend-probes.cjs')
 const { probeGatewayWebSocket } = require('./gateway-ws-probe.cjs')
+const {
+  assertRemoteOnlyMode,
+  normalizeConnectionMode,
+  remoteOnlyConfigurationError,
+  requiresRemoteTarget,
+  resolveRemoteOnlyMode
+} = require('./remote-only.cjs')
 const { serializeJsonBody, setJsonRequestHeaders } = require('./oauth-net-request.cjs')
 const {
   buildPosixCleanupScript,
@@ -202,9 +209,10 @@ if (INSTALL_STAMP) {
 // Remote-only artifacts never install, update, or spawn a local Hermes
 // backend. The build script persists this in install-stamp.json so the mode
 // survives launches from Finder/Explorer after the build environment is gone.
-const REMOTE_ONLY =
-  ['1', 'true', 'yes'].includes(String(process.env.HERMES_DESKTOP_REMOTE_ONLY || '').toLowerCase()) ||
-  INSTALL_STAMP?.remoteOnly === true
+const REMOTE_ONLY = resolveRemoteOnlyMode({
+  envValue: process.env.HERMES_DESKTOP_REMOTE_ONLY,
+  stampRemoteOnly: INSTALL_STAMP?.remoteOnly
+})
 
 // HERMES_HOME — the user-facing root for everything Hermes-related. Mirrors
 // scripts/install.ps1's $HermesHome and scripts/install.sh's $HERMES_HOME.
@@ -3984,10 +3992,8 @@ function buildRemoteBlock(remoteUrl, authMode, token) {
 function coerceDesktopConnectionConfig(input = {}, existing = readDesktopConnectionConfig(), options = {}) {
   const persistToken = options.persistToken !== false
   const key = connectionScopeKey(input.profile)
-  if (REMOTE_ONLY && input.mode === 'local') {
-    throw new Error('This Hermes Desktop build is remote-only; configure a remote gateway instead.')
-  }
-  const mode = REMOTE_ONLY || input.mode === 'remote' ? 'remote' : 'local'
+  assertRemoteOnlyMode({ remoteOnly: REMOTE_ONLY, requestedMode: input.mode })
+  const mode = normalizeConnectionMode({ remoteOnly: REMOTE_ONLY, requestedMode: input.mode })
 
   // The block being edited: a per-profile entry or the global remote block.
   const existingBlock = key ? existing.profiles?.[key] || {} : existing.remote || {}
@@ -4123,16 +4129,12 @@ async function resolveRemoteBackend(profile) {
   // 3. Global remote.
   if (config.mode !== 'remote') {
     if (REMOTE_ONLY) {
-      throw new Error(
-        'This Hermes Desktop build is remote-only. Set HERMES_DESKTOP_REMOTE_URL and HERMES_DESKTOP_REMOTE_TOKEN, or save a remote gateway in connection settings.'
-      )
+      throw remoteOnlyConfigurationError()
     }
     return null
   }
-  if (REMOTE_ONLY && !config.remote?.url) {
-    throw new Error(
-      'This Hermes Desktop build is remote-only. Set HERMES_DESKTOP_REMOTE_URL and HERMES_DESKTOP_REMOTE_TOKEN, or save a remote gateway in connection settings.'
-    )
+  if (requiresRemoteTarget({ remoteOnly: REMOTE_ONLY, configMode: config.mode, remoteUrl: config.remote?.url })) {
+    throw remoteOnlyConfigurationError()
   }
   const authMode = normAuthMode(config.remote?.authMode)
   const token = authMode === 'oauth' ? null : decryptDesktopSecret(config.remote?.token)
