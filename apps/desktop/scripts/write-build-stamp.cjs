@@ -13,7 +13,8 @@
  *     "branch":        "<branch name>",
  *     "builtAt":       "<ISO 8601 UTC timestamp>",
  *     "dirty":         true|false,
- *     "source":        "ci" | "local"
+ *     "source":        "ci" | "local",
+ *     "remoteOnly":    true|false
  *   }
  *
  * Source preference order:
@@ -108,7 +109,11 @@ function main() {
     branch: stamp.branch,
     builtAt: new Date().toISOString(),
     dirty: stamp.dirty,
-    source: stamp.source
+    source: stamp.source,
+    // Remote-only artifacts never bootstrap or spawn a local Hermes backend.
+    // Persist the mode in the packaged stamp so it survives Finder/Explorer
+    // launches after the build environment is gone.
+    remoteOnly: process.env.HERMES_DESKTOP_REMOTE_ONLY === "1"
   }
 
   fs.mkdirSync(OUT_DIR, { recursive: true })
